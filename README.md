@@ -6,7 +6,11 @@ This sample web application demonstrates authentication and policy-based authori
 
 The application uses Amazon Cognito for authentication and uses Amazon Verified Permissions for policy-based authorization. Additionally, the application uses API-Gateway as the front-door to the application, and Lambda to process requests.
 
-**Note**: This package contains the backend resources of the application. Refer to avp-toy-store-sample-frontend for front end resources.
+This application is split across 2 packages 
+
+1. [avp-toy-store-sample](https://github.com/aws-samples/avp-toy-store-sample/) package contains the backend code, include API-Gateway, Lambda's and Verified Permissions 
+
+2. [avp-toy-store-sample-frontend] (https://github.com/aws-samples/avp-toy-store-sample-frontend) package contains the frontend code and Cognito configuration.
 
 ## Use Cases
 
