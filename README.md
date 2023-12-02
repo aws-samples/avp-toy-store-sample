@@ -28,7 +28,7 @@ The sample application is for managing fulfillment of orders in 4 toy stores. Th
 
 Below diagram shows orders list for a pack associate 
 
-<img src="./static/list_order_screenshot.pngg" width="400"/>
+<img src="./static/list_order_screenshot.png" width="400"/>
 
 2. **Order Actions**: Users can take some actions on an order. The application enables the buttons based on the user’s permissions.
    1. **Pack Associates** can get box size and mark an order as shipped
