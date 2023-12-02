@@ -1,0 +1,21 @@
+Statement: >
+                permit (
+                    principal == ?principal,
+                    action in [
+                                avp::sample::toy::store::Action::"ListOrders",
+                                avp::sample::toy::store::Action::"GetOrder",
+                                avp::sample::toy::store::Action::"GetOrderLabel",
+                                avp::sample::toy::store::Action::"GetOrderReceipt",
+                                avp::sample::toy::store::Action::"SetOrderShipped",
+                                avp::sample::toy::store::Action::"GetOrderBoxSize"
+                    ],
+                    resource in ?resource
+                ) when
+                {
+                     !(action in avp::sample::toy::store::Action::"OrderActions") ||
+                     (
+                          resource has department &&
+                          principal has "custom:department" &&
+                          principal["custom:department"] == resource.department
+                     )
+                };

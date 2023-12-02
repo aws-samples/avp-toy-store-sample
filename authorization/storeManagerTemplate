@@ -1,0 +1,12 @@
+Statement: >
+                permit (
+                    principal == ?principal,
+                    action in [
+                         avp::sample::toy::store::Action::"OrderActions",
+                         avp::sample::toy::store::Action::"AddPackAssociate",
+                         avp::sample::toy::store::Action::"AddStoreManager",
+                         avp::sample::toy::store::Action::"ListPackAssociates",
+                         avp::sample::toy::store::Action::"ListStoreManagers"
+                    ],
+                    resource in ?resource
+                );

@@ -1,0 +1,690 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+    Generator: "former2"
+Description: ""
+Parameters:
+    Region:
+      Type: "String"
+      Default: "ap-southeast-2"
+    CognitoUserPool:
+      Type: "String"
+    CognitoUserPoolARN:
+      Type: "String"
+    artifactBucket:
+        Default: artifacts-avp-demo
+        Type: String
+    artifactObjectName:
+        Default: sample-avp-toy-store-1.0-SNAPSHOT.jar
+        Type: String
+Resources:
+    LogsLogGroup:
+        Type: "AWS::Logs::LogGroup"
+        Properties:
+            LogGroupName: "/aws/lambda/sample-avp-toy-store-authorizer"
+
+    LogsLogGroup2:
+        Type: "AWS::Logs::LogGroup"
+        Properties:
+            LogGroupName: "/aws/lambda/sample-avp-toy-store-order-manager"
+
+    LogsLogGroup3:
+        Type: "AWS::Logs::LogGroup"
+        Properties:
+            LogGroupName: "/aws/lambda/sample-avp-toy-store-role-manager"
+
+    LogsLogGroup4:
+        Type: "AWS::Logs::LogGroup"
+        Properties:
+            LogGroupName: "sample-avp-toy-store"
+
+    LogsLogGroup5:
+        Type: "AWS::Logs::LogGroup"
+        Properties:
+            LogGroupName: "/aws/lambda/sample-avp-toy-store-listing-orders"
+
+    LogsLogGroup6:
+        Type: "AWS::Logs::LogGroup"
+        Properties:
+            LogGroupName: "/aws/lambda/sample-avp-toy-store-get-authorized-actions"
+
+    ApiGatewayV2Api:
+        Type: "AWS::ApiGatewayV2::Api"
+        Properties:
+            ProtocolType: "HTTP"
+            Name: "avp-toy-store-sample"
+            RouteSelectionExpression: "$request.method $request.path"
+            CorsConfiguration: 
+                AllowCredentials: false
+                AllowHeaders: 
+                  - "*"
+                AllowMethods: 
+                  - "PUT"
+                  - "GET"
+                  - "POST"
+                  - "OPTIONS"
+                  - "DELETE"
+                AllowOrigins: 
+                  - "*"
+                ExposeHeaders: 
+                  - "*"
+                MaxAge: 0
+            DisableExecuteApiEndpoint: false
+    ApiGatewayV2Stage:
+        Type: "AWS::ApiGatewayV2::Stage"
+        Properties:
+            StageName: "prod"
+            StageVariables: {}
+            ApiId: !Ref ApiGatewayV2Api
+           # DeploymentId: "vg8z6p"
+            RouteSettings: {}
+            DefaultRouteSettings: 
+                DetailedMetricsEnabled: true
+            AccessLogSettings: 
+                DestinationArn: !Sub "arn:aws:logs:${Region}:${AWS::AccountId}:log-group:sample-avp-toy-store"
+                Format: "{ \"requestId\":\"$context.requestId\", \"ip\": \"$context.identity.sourceIp\", \"requestTime\":\"$context.requestTime\", \"httpMethod\":\"$context.httpMethod\",\"routeKey\":\"$context.routeKey\", \"status\":\"$context.status\",\"protocol\":\"$context.protocol\", \"responseLength\":\"$context.responseLength\" \"error\":\"$context.authorizer.error\"}"
+        DependsOn: ApiGatewayV2Api
+
+    ApiGatewayV2Deployment:
+        Type: "AWS::ApiGatewayV2::Deployment"
+        DependsOn:
+        - ApiGatewayV2RouteForGetOrder
+        - ApiGatewayV2RouteForListingStoreManagers
+        - ApiGatewayV2RouteForListingPackAssociates
+        - ApiGatewayV2RouteForListingOrders
+        - ApiGatewayV2RouteForAddingPackAssociate
+        - ApiGatewayV2RouteForAddingStoreManager
+        - ApiGatewayV2RouteForGettingOrderReceipt
+        - ApiGatewayV2RouteForGettingOrderBoxSize
+        - ApiGatewayV2RouteCancelOrder
+        - ApiGatewayV2Api
+        - ApiGatewayV2Stage
+        - ApiGatewayV2RouteForAuthorizedActionsForStore
+        - ApiGatewayV2RouteForAuthorizedActionsForOrder
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            StageName: !Ref ApiGatewayV2Stage
+        
+    ApiGatewayV2IntegrationForRoleManagementListingAccess:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt RoleManagerListAccessLambda.Arn
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
+    ApiGatewayV2IntegrationForAuthorizedActions:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt GetAuthorizedActions.Arn
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
+    ApiGatewayV2IntegrationForRoleManagementGrantingAccess:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt RoleManagerGrantAccessLambda.Arn 
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
+    ApiGatewayV2IntegrationForOrderManagement:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt OrderManagerLambda.Arn 
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
+    ApiGatewayV2IntegrationForListingOrders:
+        Type: "AWS::ApiGatewayV2::Integration"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ConnectionType: "INTERNET"
+            IntegrationMethod: "POST"
+            IntegrationType: "AWS_PROXY"
+            IntegrationUri: !GetAtt OrderListingLambda.Arn
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: "2.0"
+
+    ApiGatewayV2AVPAuthorizer:
+        Type: "AWS::ApiGatewayV2::Authorizer"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            AuthorizerResultTtlInSeconds: 0
+            AuthorizerType: "REQUEST"
+            AuthorizerPayloadFormatVersion: "2.0"
+            AuthorizerUri: !Sub "arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${Region}:${AWS::AccountId}:function:${AVPAuthorizerLambda}/invocations"
+            IdentitySource: 
+              - "$request.header.Authorization"
+            Name: !Ref AVPAuthorizerLambda
+
+    GetAuthorizedActions:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: "test"
+            Environment:
+                Variables:
+                    policyStoreId: !Ref PolicyStore
+                    userPoolId: !Sub '${CognitoUserPool}'
+                    region: !Sub '${Region}'
+            FunctionName: "sample-avp-toy-store-get-authorized-actions"
+            Handler: "org.example.api.LambdaAuthorizer::getAuthorizedActions"
+            Architectures:
+                - "x86_64"
+            Code:
+                S3Bucket: !Sub '${artifactBucket}'
+                S3Key: !Sub '${artifactObjectName}'
+            MemorySize: 512
+            TracingConfig:
+                Mode: Active
+            Role: !GetAtt avpAuthorizerIamRole.Arn
+            Runtime: "java11"
+            Timeout: 30
+            EphemeralStorage:
+                Size: 512
+        DependsOn: PolicyStore
+
+    AVPAuthorizerLambda:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: "test"
+            Environment: 
+                Variables: 
+                    policyStoreId: !Ref PolicyStore
+                    userPoolId: !Sub '${CognitoUserPool}'
+                    region: !Sub '${Region}'
+            FunctionName: "sample-avp-toy-store-authorizer"
+            Handler: "org.example.api.LambdaAuthorizer::authorizeRequest"
+            TracingConfig:
+                Mode: Active
+            Architectures: 
+            - "x86_64"
+            Code: 
+                S3Bucket: !Sub '${artifactBucket}'
+                S3Key: !Sub '${artifactObjectName}'
+            MemorySize: 512
+            Role: !GetAtt avpAuthorizerIamRole.Arn
+            Runtime: "java11"
+            Timeout: 30
+            EphemeralStorage: 
+                Size: 512
+        DependsOn: PolicyStore
+
+    OrderManagerLambda:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: "Mock order manager. this is a stub implementation "
+            Environment: 
+                Variables: 
+                    policyStoreId: !Ref PolicyStore
+                    userPoolId: !Sub '${CognitoUserPool}'
+                    region: !Sub '${Region}'
+            FunctionName: "sample-avp-toy-store-order-manager"
+            Handler: "org.example.api.OrderManager::getOrder"
+            Architectures: 
+              - "x86_64"
+            Code: 
+                S3Bucket: !Sub '${artifactBucket}'
+                S3Key: !Sub '${artifactObjectName}'
+            MemorySize: 512
+            Role: !GetAtt OrderManagerIamRole.Arn
+            Runtime: "java11"
+            Timeout: 60
+            TracingConfig: 
+                Mode: Active
+            EphemeralStorage: 
+                Size: 512
+
+    OrderListingLambda:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: "Mock order manager. this is a stub implementation "
+            Environment:
+                Variables:
+                    policyStoreId: !Ref PolicyStore
+                    userPoolId: !Sub '${CognitoUserPool}'
+                    region: !Sub '${Region}'
+            FunctionName: "sample-avp-toy-store-listing-orders"
+            Handler: "org.example.api.OrderManager::listOrders"
+            Architectures:
+                - "x86_64"
+            Code:
+                S3Bucket: !Sub '${artifactBucket}'
+                S3Key: !Sub '${artifactObjectName}'
+            MemorySize: 512
+            Role: !GetAtt ListingOrdersIamRole.Arn
+            Runtime: "java11"
+            Timeout: 60
+            TracingConfig:
+                Mode: "Active"
+            EphemeralStorage:
+                Size: 512
+
+    RoleManagerGrantAccessLambda:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: "Lambda for adding store managers and pack associates"
+            Environment: 
+                Variables: 
+                    policyStoreId: !Ref PolicyStore
+                    userPoolId: !Sub '${CognitoUserPool}'
+                    region: !Sub '${Region}'
+                    storeManagerTemplateId: !GetAtt StoreManagerPolicyTemplate.PolicyTemplateId
+                    packAssociateTemplateId: !GetAtt PackAssociatesPolicyTemplate.PolicyTemplateId
+            FunctionName: "sample-avp-toy-store-role-manager-to-grant-access"
+            Handler: "org.example.api.PermissionHandler::grantAccess"
+            Architectures: 
+              - "x86_64"
+            Code: 
+                S3Bucket: !Sub '${artifactBucket}'
+                S3Key: !Sub '${artifactObjectName}'
+            MemorySize: 512
+            Role: !GetAtt RoleManagerIamRole.Arn
+            Runtime: "java11"
+            Timeout: 15
+            TracingConfig: 
+                Mode: "Active"
+            EphemeralStorage: 
+                Size: 512
+    
+    RoleManagerListAccessLambda:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Description: "Lambda for getting store managers and pack associates"
+            Environment: 
+                Variables: 
+                    policyStoreId: !Ref PolicyStore
+                    userPoolId: !Sub '${CognitoUserPool}'
+                    region: !Sub '${Region}'
+                    storeManagerTemplateId: !GetAtt StoreManagerPolicyTemplate.PolicyTemplateId
+                    packAssociateTemplateId: !GetAtt PackAssociatesPolicyTemplate.PolicyTemplateId
+            FunctionName: "sample-avp-toy-store-role-manager-to-list-access"
+            Handler: "org.example.api.PermissionHandler::listUsers"
+            Architectures: 
+              - "x86_64"
+            Code: 
+                S3Bucket: !Sub '${artifactBucket}'
+                S3Key: !Sub '${artifactObjectName}'
+            MemorySize: 512
+            Role: !GetAtt RoleManagerIamRole.Arn
+            Runtime: "java11"
+            Timeout: 15
+            TracingConfig: 
+                Mode: "Active"
+            EphemeralStorage: 
+                Size: 512
+
+    LambdaPermission:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt OrderManagerLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/orders"
+
+    LambdaPermission2:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt OrderManagerLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/order/{order-id}"
+
+    LambdaPermission3:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt OrderManagerLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/order/{order-id}/*"
+
+    LambdaPermission4:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt RoleManagerListAccessLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/pack_associate"
+
+    LambdaPermission5:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt RoleManagerListAccessLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/store_manager"
+
+    LambdaPermission8:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt RoleManagerGrantAccessLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/pack_associate/{employee-id}"
+
+    LambdaPermission9:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt RoleManagerGrantAccessLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/store_manager/{employee-id}"
+
+    LambdaPermission10:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt AVPAuthorizerLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/authorizers/${ApiGatewayV2AVPAuthorizer}"
+
+    LambdaPermission11:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt OrderListingLambda.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/orders"
+
+    LambdaPermission12:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt GetAuthorizedActions.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/permissions"
+
+    LambdaPermission13:
+        Type: "AWS::Lambda::Permission"
+        Properties:
+            Action: "lambda:InvokeFunction"
+            FunctionName: !GetAtt GetAuthorizedActions.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn: !Sub "arn:aws:execute-api:${Region}:${AWS::AccountId}:${ApiGatewayV2Api}/*/*/store/{store-id}/order/{order-id}/permissions"
+
+
+    OrderManagerIamRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/service-role/"
+            RoleName: !Sub  "sampleAvpToyStoreOrderManagerRole-${Region}"
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - !Ref IAMManagedPolicyForLogging
+
+    ListingOrdersIamRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/service-role/"
+            RoleName: !Sub   "sampleAvpToyStoreListingOrders-${Region}"
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns:
+                - !Ref IAMManagedPolicyForLogging
+                - !Ref IAMManagedPolicyForAVPAuthorization
+
+    avpAuthorizerIamRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/service-role/"
+            RoleName: !Sub   "sampleAvpToyStoreAvpAuthorizerRole-${Region}"
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - !Ref IAMManagedPolicyForLogging
+              - !Ref IAMManagedPolicyForAVPAuthorization
+
+    RoleManagerIamRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/service-role/"
+            RoleName:  !Sub  "sampleAvpToyStoreRoleManagerRole-${Region}"
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - "arn:aws:iam::aws:policy/AmazonCognitoReadOnly"
+              - !Ref IAMManagedPolicyForLogging
+              - !Ref IAMManagedPolicyForAVPPolicyManagement
+
+    IAMManagedPolicyForLogging:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            ManagedPolicyName: !Sub  "IAMManagedPolicyForLogging-${Region}"
+            Path: "/service-role/"
+            PolicyDocument: !Sub |
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "logs:CreateLogGroup",
+                            "Resource": "arn:aws:logs:${Region}:${AWS::AccountId}:*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Resource": [
+                                "arn:aws:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/sample-avp-toy-store-listing-orders:*",
+                                "arn:aws:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/sample-avp-toy-store-order-manager:*",
+                                "arn:aws:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/sample-avp-toy-store-role-manager-to-grant-access:*",
+                                "arn:aws:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/sample-avp-toy-store-role-manager-to-list-access:*",
+                                "arn:aws:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/sample-avp-toy-store-authorizer:*",
+                                "arn:aws:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/sample-avp-toy-store-get-authorized-actions:*"
+                            ]
+                        },
+                        {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "xray:PutTraceSegments",
+                                    "xray:PutTelemetryRecords"
+                                ],
+                                "Resource": "*"
+                        }
+                    ]
+                }
+
+    IAMManagedPolicyForAVPAuthorization:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            ManagedPolicyName: !Sub "IAMManagedPolicyForAVPAuthorization-${Region}"
+            Path: "/service-role/"
+            PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: "Allow"
+                    Action:
+                    - "verifiedpermissions:IsAuthorized"
+                    Resource: !Sub ${PolicyStore.Arn}       
+
+    IAMManagedPolicyForAVPPolicyManagement:
+        Type: "AWS::IAM::ManagedPolicy"
+        Properties:
+            ManagedPolicyName: !Sub "IAMManagedPolicyForAVPPolicyManagement-${Region}"
+            Path: "/service-role/"
+            PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    - Effect: "Allow"
+                      Action:
+                      - "verifiedpermissions:CreatePolicy"
+                      - "verifiedpermissions:ListPolicies"
+                      Resource: !Sub ${PolicyStore.Arn}
+
+    ApiGatewayV2RouteForGetOrder:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "GET /store/{store-id}/order/{order-id}"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForOrderManagement}"
+
+    ApiGatewayV2RouteForGettingOrderReceipt:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "GET /store/{store-id}/order/{order-id}/receipt"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForOrderManagement}"
+   
+    ApiGatewayV2RouteForGettingOrderBoxSize:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "GET /store/{store-id}/order/{order-id}/box_size"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForOrderManagement}"
+ 
+    ApiGatewayV2RouteForGettingOrderLabel:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "GET /store/{store-id}/order/{order-id}/label"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForOrderManagement}"
+
+    ApiGatewayV2RouteForListingOrders:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "GET /store/{store-id}/orders"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForListingOrders}"
+
+    ApiGatewayV2RouteCancelOrder:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "DELETE /store/{store-id}/order/{order-id}"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForOrderManagement}"
+   
+    ApiGatewayV2RouteForListingStoreManagers:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "GET /store/{store-id}/store_manager"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForRoleManagementListingAccess}"
+ 
+    ApiGatewayV2RouteForListingPackAssociates:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "GET /store/{store-id}/pack_associate"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForRoleManagementListingAccess}"
+   
+    ApiGatewayV2RouteForAddingStoreManager:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "PUT /store/{store-id}/store_manager/{employee-id}"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForRoleManagementGrantingAccess}"
+
+    ApiGatewayV2RouteForAddingPackAssociate:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !Ref ApiGatewayV2AVPAuthorizer
+            RouteKey: "PUT /store/{store-id}/pack_associate/{employee-id}"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForRoleManagementGrantingAccess}"
+
+    ApiGatewayV2RouteForAuthorizedActionsForStore:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            RouteKey: "GET /store/{store-id}/permissions"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForAuthorizedActions}"
+
+    ApiGatewayV2RouteForAuthorizedActionsForOrder:
+        Type: "AWS::ApiGatewayV2::Route"
+        Properties:
+            ApiId: !Ref ApiGatewayV2Api
+            ApiKeyRequired: false
+            RouteKey: "GET /store/{store-id}/order/{order-id}/permissions"
+            Target: !Sub "integrations/${ApiGatewayV2IntegrationForAuthorizedActions}"
+
+
+    PolicyStore:
+        Type: 'AWS::VerifiedPermissions::PolicyStore'
+        Properties: 
+            ValidationSettings: 
+                Mode : 'STRICT'
+            Schema:
+                Fn::Transform:
+                    Name: "AWS::Include"
+                    Parameters:
+                        Location: !Sub 's3://${artifactBucket}/authorization/schema'
+        
+
+    StoreManagerPolicyTemplate:
+        Type: AWS::VerifiedPermissions::PolicyTemplate
+        Properties: 
+            Description: 'Template for store managers'
+            PolicyStoreId: !Ref 'PolicyStore'
+            Fn::Transform:
+                Name: "AWS::Include"
+                Parameters:
+                    Location: !Sub 's3://${artifactBucket}/authorization/storeManagerTemplate'        
+        DependsOn: PolicyStore
+
+    PackAssociatesPolicyTemplate:
+        Type: AWS::VerifiedPermissions::PolicyTemplate
+        Properties: 
+            Description: 'Template for Pack Associates'
+            PolicyStoreId: !Ref 'PolicyStore'
+            Fn::Transform:
+                Name: "AWS::Include"
+                Parameters:
+                    Location: !Sub 's3://${artifactBucket}/authorization/packAssociateTemplate'
+        DependsOn: PolicyStore
+
+    CognitoIdentitySource: 
+        Type: AWS::VerifiedPermissions::IdentitySource
+        Properties: 
+            Configuration:
+                CognitoUserPoolConfiguration:
+                    UserPoolArn: !Ref CognitoUserPoolARN
+            PolicyStoreId: !Ref 'PolicyStore'
+            PrincipalEntityType: 'avp::sample::toy::store::User'
+        DependsOn: PolicyStore
+        

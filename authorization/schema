@@ -1,0 +1,313 @@
+CedarJson: >
+        {
+            "avp::sample::toy::store": {
+                "entityTypes": {
+                    "AllStores": {
+                        "shape": {
+                            "type": "Record",
+                            "attributes": {}
+                        },
+                        "memberOfTypes": []
+                    },
+                    "AllOrders": {
+                        "shape": {
+                            "type": "Record",
+                            "attributes": {}
+                        },
+                        "memberOfTypes": []
+                    },
+                    "User": {
+                        "memberOfTypes": [],
+                        "shape": {
+                            "attributes": {
+                                "jobLevel": {
+                                    "required": false,
+                                    "type": "Long"
+                                },
+                                "custom": {
+                                    "attributes": {
+                                        "department": {
+                                            "required": false,
+                                            "type": "String"
+                                        },
+                                        "level": {
+                                            "required": false,
+                                            "type": "Long"
+                                        }
+                                    },
+                                    "required": false,
+                                    "type": "Record"
+                                },
+                                "gender": {
+                                    "type": "String",
+                                    "required": true
+                                }
+                            },
+                            "type": "Record"
+                        }
+                    },
+                    "Order": {
+                        "memberOfTypes": [
+                            "AllOrders",
+                            "Store"
+                        ],
+                        "shape": {
+                            "attributes": {
+                                "department": {
+                                    "type": "String"
+                                }
+                            },
+                            "type": "Record"
+                        }
+                    },
+                    "Store": {
+                        "shape": {
+                            "type": "Record",
+                            "attributes": {}
+                        },
+                        "memberOfTypes": [
+                            "AllStores",
+                            "Store"
+                        ]
+                    }
+                },
+                "actions": {
+                    "AddPackAssociate": {
+                        "appliesTo": {
+                            "resourceTypes": [
+                                "Store"
+                            ],
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "context": {
+                                "attributes": {},
+                                "type": "Record"
+                            }
+                        }
+                    },
+                    "DeleteOrder": {
+                        "memberOf": [
+                            {
+                                "type": "avp::sample::toy::store::Action",
+                                "id": "OrderActions"
+                            }
+                        ],
+                        "appliesTo": {
+                            "resourceTypes": [
+                                "Order"
+                            ],
+                            "context": {
+                                "type": "Record",
+                                "attributes": {}
+                            },
+                            "principalTypes": [
+                                "User"
+                            ]
+                        }
+                    },
+                    "ReRouteOrder": {
+                        "memberOf": [
+                            {
+                                "type": "avp::sample::toy::store::Action",
+                                "id": "OrderActions"
+                            }
+                        ],
+                        "appliesTo": {
+                            "resourceTypes": [
+                                "Order"
+                            ],
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "context": {
+                                "attributes": {},
+                                "type": "Record"
+                            }
+                        }
+                    },
+                    "GetOrderBoxSize": {
+                        "appliesTo": {
+                            "resourceTypes": [
+                                "Order"
+                            ],
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "context": {
+                                "attributes": {},
+                                "type": "Record"
+                            }
+                        },
+                        "memberOf": [
+                            {
+                                "id": "OrderActions",
+                                "type": "avp::sample::toy::store::Action"
+                            }
+                        ]
+                    },
+                    "GetOrderLabel": {
+                        "memberOf": [
+                            {
+                                "type": "avp::sample::toy::store::Action",
+                                "id": "OrderActions"
+                            }
+                        ],
+                        "appliesTo": {
+                            "resourceTypes": [
+                                "Order"
+                            ],
+                            "context": {
+                                "type": "Record",
+                                "attributes": {}
+                            },
+                            "principalTypes": [
+                                "User"
+                            ]
+                        }
+                    },
+                    "ListStoreManagers": {
+                        "appliesTo": {
+                            "resourceTypes": [
+                                "Store"
+                            ],
+                            "context": {
+                                "attributes": {},
+                                "type": "Record"
+                            },
+                            "principalTypes": [
+                                "User"
+                            ]
+                        }
+                    },
+                    "GetOrderReceipt": {
+                        "memberOf": [
+                            {
+                                "type": "avp::sample::toy::store::Action",
+                                "id": "OrderActions"
+                            }
+                        ],
+                        "appliesTo": {
+                            "context": {
+                                "type": "Record",
+                                "attributes": {}
+                            },
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "resourceTypes": [
+                                "Order"
+                            ]
+                        }
+                    },
+                    "ListPackAssociates": {
+                        "appliesTo": {
+                            "context": {
+                                "type": "Record",
+                                "attributes": {}
+                            },
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "resourceTypes": [
+                                "Store"
+                            ]
+                        },
+                        "memberOf": [
+                            {
+                                "id": "OrderActions",
+                                "type": "avp::sample::toy::store::Action"
+                            }
+                        ]
+                    },
+                    "GetOrder": {
+                        "memberOf": [
+                            {
+                                "type": "avp::sample::toy::store::Action",
+                                "id": "OrderActions"
+                            }
+                        ],
+                        "appliesTo": {
+                            "resourceTypes": [
+                                "Order"
+                            ],
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "context": {
+                                "type": "Record",
+                                "attributes": {}
+                            }
+                        }
+                    },
+                    "ListOrders": {
+                        "appliesTo": {
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "resourceTypes": [
+                                "Store"
+                            ],
+                            "context": {
+                                "type": "Record",
+                                "attributes": {}
+                            }
+                        },
+                        "memberOf": [
+                            {
+                                "type": "avp::sample::toy::store::Action",
+                                "id": "OrderActions"
+                            }
+                        ]
+                    },
+                    "AddStoreManager": {
+                        "appliesTo": {
+                            "context": {
+                                "type": "Record",
+                                "attributes": {}
+                            },
+                            "resourceTypes": [
+                                "Store"
+                            ],
+                            "principalTypes": [
+                                "User"
+                            ]
+                        }
+                    },
+                    "OrderActions": {
+                        "appliesTo": {
+                            "context": {
+                                "type": "Record",
+                                "attributes": {}
+                            },
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "resourceTypes": [
+                                "Order"
+                            ]
+                        }
+                    },
+                    "SetOrderShipped": {
+                        "memberOf": [
+                            {
+                                "type": "avp::sample::toy::store::Action",
+                                "id": "OrderActions"
+                            }
+                        ],
+                        "appliesTo": {
+                            "resourceTypes": [
+                                "Order"
+                            ],
+                            "principalTypes": [
+                                "User"
+                            ],
+                            "context": {
+                                "attributes": {},
+                                "type": "Record"
+                            }
+                        }
+                    }
+                }
+            }
+        }
